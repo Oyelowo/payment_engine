@@ -1,3 +1,5 @@
+[![Rust](https://github.com/Oyelowo/payment_engine/actions/workflows/check_code.yml/badge.svg?branch=master)](https://github.com/Oyelowo/payment_engine/actions/workflows/check_code.yml)
+
 # Description 
 Toy payment engine
 # How to run
