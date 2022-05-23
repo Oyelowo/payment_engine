@@ -33,6 +33,7 @@ fn generate_accounts_from_transactions(
         .has_headers(true)
         .delimiter(b',')
         .trim(csv::Trim::All)
+        .flexible(true)
         .from_reader(reader);
 
     let mut store = Store::new();

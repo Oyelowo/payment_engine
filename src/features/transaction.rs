@@ -1,5 +1,6 @@
 use super::account::{Account, ClientId};
 use super::store::Store;
+use anyhow::Context;
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -47,6 +48,9 @@ pub(crate) enum TransactionType {
 pub enum TransactionError {
     #[error("Invalid transaction - {0}")]
     InvalidTransaction(TransactionId),
+
+    #[error("Invalid transaction - {0}")]
+    Unknown(#[from] anyhow::Error),
 }
 
 pub type TransactionId = u32;
@@ -100,7 +104,7 @@ impl Transaction {
                 if let Some(amount) = amount {
                     client_account
                         .deposit(amount, store)
-                        .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?;
+                        .with_context(|| "Problem occured while initiating deposit")?;
                 }
                 client_account
             }
@@ -108,19 +112,19 @@ impl Transaction {
                 if let Some(amount) = amount {
                     client_account
                         .withdraw(amount, store)
-                        .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?;
+                        .with_context(|| "Problem occured while initiating withrawal")?;
                 }
                 client_account
             }
             Dispute => client_account
                 .dispute(self.transaction_id, store)
-                .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?,
+                .with_context(|| "Problem occured while initiating dispute")?,
             Resolve => client_account
                 .resolve(self.transaction_id, store)
-                .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?,
+                .with_context(|| "Problem occured while initiating resolution")?,
             Chargeback => client_account
                 .charge_back(self.transaction_id, store)
-                .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?,
+                .with_context(|| "Problem occured while initiating chargeback")?,
         };
         Ok(())
     }
