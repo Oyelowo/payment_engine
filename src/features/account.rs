@@ -118,20 +118,20 @@ impl Account {
         store: &mut Store,
     ) -> AccountResult<Self> {
         let mut transaction = Transaction::find_by_id(transaction_id, store);
+        match transaction.as_mut() {
+            Some(tx) => {
+                let amount = tx.amount.context("Amount does not exist")?;
+                tx.is_under_dispute = true;
 
-        if let Some(transaction) = transaction.as_mut() {
-            transaction.is_under_dispute = true;
-        }
-
-        if let Some(amount) = transaction.and_then(|x| x.amount) {
-            return Self {
-                available_amount: self.available_amount - amount,
-                held_amount: self.held_amount + amount,
-                ..self
+                Self {
+                    available_amount: self.available_amount - amount,
+                    held_amount: self.held_amount + amount,
+                    ..self
+                }
+                .update(store)
             }
-            .update(store);
+            _ => Err(AccountError::Unknown),
         }
-        Ok(self)
     }
 
     pub(crate) fn resolve(
@@ -139,21 +139,21 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
-        let mut maybe_transaction = Transaction::find_by_id(transaction_id, store);
+        let mut transaction = Transaction::find_by_id(transaction_id, store);
+        match transaction.as_mut() {
+            Some(tx) if tx.is_under_dispute => {
+                let amount = tx.amount.context("Amount does not exist")?;
+                tx.is_under_dispute = false;
 
-        if let Some(transaction) = maybe_transaction.as_mut() {
-            transaction.is_under_dispute = false;
-        }
-
-        if let Some(amount) = maybe_transaction.and_then(|x| x.amount) {
-            return Self {
-                available_amount: self.available_amount + amount,
-                held_amount: self.held_amount - amount,
-                ..self
+                Self {
+                    available_amount: self.available_amount + amount,
+                    held_amount: self.held_amount - amount,
+                    ..self
+                }
+                .update(store)
             }
-            .update(store);
+            _ => Err(AccountError::Unknown),
         }
-        Ok(self)
     }
 
     // Should charge back be allowed to negative balance?
@@ -165,8 +165,8 @@ impl Account {
         let mut transaction = Transaction::find_by_id(transaction_id, store);
 
         match transaction.as_mut() {
-            Some(t) if t.is_under_dispute => {
-                let amount = t.amount.context("Amount does not exist")?;
+            Some(tx) if tx.is_under_dispute => {
+                let amount = tx.amount.context("Amount does not exist")?;
                 Self {
                     is_locked: true,
                     held_amount: self.held_amount - amount,
