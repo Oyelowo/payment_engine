@@ -1,6 +1,5 @@
-use super::account::{Account, ClientId};
+use super::account::{Account, AccountError, ClientId};
 use super::store::Store;
-use anyhow::Context;
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -47,10 +46,7 @@ pub(crate) enum TransactionType {
 #[derive(Error, Debug)]
 pub enum TransactionError {
     #[error("Invalid transaction - {0}")]
-    InvalidTransaction(TransactionId),
-
-    #[error("Invalid transaction - {0}")]
-    Unknown(#[from] anyhow::Error),
+    AccountError(#[from] AccountError),
 }
 
 pub type TransactionId = u32;
@@ -102,29 +98,19 @@ impl Transaction {
         match self.transaction_type {
             Deposit => {
                 if let Some(amount) = amount {
-                    client_account
-                        .deposit(amount, store)
-                        .with_context(|| "Problem occured while initiating deposit")?;
+                    client_account.deposit(amount, store)?;
                 }
                 client_account
             }
             Withdrawal => {
                 if let Some(amount) = amount {
-                    client_account
-                        .withdraw(amount, store)
-                        .with_context(|| "Problem occured while initiating withrawal")?;
+                    client_account.withdraw(amount, store)?;
                 }
                 client_account
             }
-            Dispute => client_account
-                .dispute(self.transaction_id, store)
-                .with_context(|| "Problem occured while initiating dispute")?,
-            Resolve => client_account
-                .resolve(self.transaction_id, store)
-                .with_context(|| "Problem occured while initiating resolution")?,
-            Chargeback => client_account
-                .charge_back(self.transaction_id, store)
-                .with_context(|| "Problem occured while initiating chargeback")?,
+            Dispute => client_account.dispute(self.transaction_id, store)?,
+            Resolve => client_account.resolve(self.transaction_id, store)?,
+            Chargeback => client_account.charge_back(self.transaction_id, store)?,
         };
         Ok(())
     }

@@ -70,9 +70,11 @@ impl Account {
     }
 
     pub(crate) fn update(self, store: &mut Store) -> AccountResult<Self> {
-        if self.is_locked {
+        let account = Self::find_or_create_by_client_id(self.client_id, store);
+        if account.is_locked {
             return Err(AccountError::AccountLocked(self.client_id));
         }
+
         store.client_accounts.insert(self.client_id, self);
         Ok(self)
     }
