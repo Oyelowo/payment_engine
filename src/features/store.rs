@@ -5,6 +5,7 @@ use super::{
     transaction::{Transaction, TransactionId},
 };
 
+/// This keeps track of users' account aggregation, deposits and withdrawals
 #[derive(Debug, Clone)]
 pub struct Store {
     pub client_accounts: BTreeMap<ClientId, Account>,

@@ -22,6 +22,7 @@ pub enum AccountError {
 
 type AccountResult<T> = anyhow::Result<T, AccountError>;
 
+/// Client Account
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct Account {
     client_id: ClientId,
@@ -148,6 +149,7 @@ impl Account {
         Ok(self)
     }
 
+    // Should charge back be allowed to negative balance? 
     pub(crate) fn charge_back(
         self,
         transaction_id: TransactionId,
