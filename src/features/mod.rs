@@ -1,10 +1,9 @@
 mod account;
 mod store;
 mod transaction;
-// pub use account::
 
 pub use self::{
-    account::ClientAccount,
+    account::Account,
     store::Store,
     transaction::{Transaction, TransactionId},
 };
