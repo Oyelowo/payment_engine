@@ -1,21 +1,21 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use super::{
-    account::{ClientAccount, ClientId},
+    account::{Account, ClientId},
     transaction::{Transaction, TransactionId},
 };
 
 #[derive(Debug, Clone)]
 pub struct Store {
-    pub client_accounts: HashMap<ClientId, ClientAccount>,
-    pub transactions: HashMap<TransactionId, Transaction>,
+    pub client_accounts: BTreeMap<ClientId, Account>,
+    pub transactions: BTreeMap<TransactionId, Transaction>,
 }
 
 impl Store {
     pub(crate) fn new() -> Self {
         Self {
-            client_accounts: HashMap::new(),
-            transactions: HashMap::new(),
+            client_accounts: BTreeMap::new(),
+            transactions: BTreeMap::new(),
         }
     }
 }
