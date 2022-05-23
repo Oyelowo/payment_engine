@@ -1,5 +1,6 @@
 use super::store::Store;
 use super::transaction::{Transaction, TransactionId};
+use anyhow::Context;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize, Serializer};
@@ -18,6 +19,12 @@ pub enum AccountError {
     },
     #[error("Action forbidden, account- (0) is locked")]
     AccountLocked(ClientId),
+
+    #[error("Invalid input")]
+    InvalidInput(#[from] anyhow::Error),
+
+    #[error("Unknown")]
+    Unknown,
 }
 
 type AccountResult<T> = anyhow::Result<T, AccountError>;
@@ -149,7 +156,7 @@ impl Account {
         Ok(self)
     }
 
-    // Should charge back be allowed to negative balance? 
+    // Should charge back be allowed to negative balance?
     pub(crate) fn charge_back(
         self,
         transaction_id: TransactionId,
@@ -157,20 +164,18 @@ impl Account {
     ) -> AccountResult<Self> {
         let mut transaction = Transaction::find_by_id(transaction_id, store);
 
-        if let Some(transaction) = transaction.as_mut() {
-            if transaction.is_under_dispute {
-                if let Some(amount) = transaction.amount {
-                    return Self {
-                        is_locked: true,
-                        held_amount: self.held_amount - amount,
-                        total_amount: self.total_amount - amount,
-                        ..self
-                    }
-                    .update(store);
+        match transaction.as_mut() {
+            Some(t) if t.is_under_dispute => {
+                let amount = t.amount.context("Amount does not exist")?;
+                Self {
+                    is_locked: true,
+                    held_amount: self.held_amount - amount,
+                    total_amount: self.total_amount - amount,
+                    ..self
                 }
+                .update(store)
             }
+            _ => Err(AccountError::Unknown),
         }
-
-        Ok(self)
     }
 }
