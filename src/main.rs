@@ -47,7 +47,7 @@ fn generate_accounts_from_transactions(
 
     let mut wtr = Writer::from_writer(writer);
 
-    for account in store.client_accounts.values() {
+    for account in store.accounts.values() {
         wtr.serialize(account)?;
     }
     wtr.flush()?;

@@ -72,7 +72,7 @@ impl Account {
 
     pub fn find_or_create_by_client_id(client_id: ClientId, store: &mut Store) -> Account {
         *store
-            .client_accounts
+            .accounts
             .entry(client_id)
             .or_insert_with(|| Account::new(client_id))
     }
@@ -83,7 +83,7 @@ impl Account {
             return Err(AccountError::AccountLocked(self.client_id));
         }
 
-        store.client_accounts.insert(self.client_id, self);
+        store.accounts.insert(self.client_id, self);
         Ok(self)
     }
 

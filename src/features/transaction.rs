@@ -85,32 +85,32 @@ impl Transaction {
             store.transactions.insert(self.transaction_id, self);
         }
 
-        self.update_client_account(store)?;
+        self.update_account(store)?;
 
         Ok(())
     }
 
-    fn update_client_account(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
+    fn update_account(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
         use TransactionType::*;
 
-        let client_account = Account::find_or_create_by_client_id(self.client_id, store);
+        let account = Account::find_or_create_by_client_id(self.client_id, store);
         let amount = self.amount;
         match self.transaction_type {
             Deposit => {
                 if let Some(amount) = amount {
-                    client_account.deposit(amount, store)?;
+                    account.deposit(amount, store)?;
                 }
-                client_account
+                account
             }
             Withdrawal => {
                 if let Some(amount) = amount {
-                    client_account.withdraw(amount, store)?;
+                    account.withdraw(amount, store)?;
                 }
-                client_account
+                account
             }
-            Dispute => client_account.dispute(self.transaction_id, store)?,
-            Resolve => client_account.resolve(self.transaction_id, store)?,
-            Chargeback => client_account.charge_back(self.transaction_id, store)?,
+            Dispute => account.dispute(self.transaction_id, store)?,
+            Resolve => account.resolve(self.transaction_id, store)?,
+            Chargeback => account.charge_back(self.transaction_id, store)?,
         };
         Ok(())
     }
