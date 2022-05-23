@@ -1,7 +1,8 @@
-use super::account::{AccountError, ClientAccount, ClientId};
+use super::account::{Account, ClientId};
 use super::store::Store;
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
@@ -42,6 +43,12 @@ pub(crate) enum TransactionType {
     Chargeback,
 }
 
+#[derive(Error, Debug)]
+pub enum TransactionError {
+    #[error("Invalid transaction - {0}")]
+    InvalidTransaction(TransactionId),
+}
+
 pub type TransactionId = u32;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -65,36 +72,55 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn find_by_id(transaction_id: TransactionId, store: &mut Store) -> Option<Transaction> {
-        store.transactions.get(&transaction_id).copied()
+    pub fn find_by_id(
+        transaction_id: TransactionId,
+        store: &mut Store,
+    ) -> Option<&mut Transaction> {
+        store.transactions.get_mut(&transaction_id)
     }
 
-    pub(crate) fn record(self, store: &mut Store) -> anyhow::Result<(), AccountError> {
-        store.transactions.insert(self.transaction_id, self);
+    pub(crate) fn save(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
+        use TransactionType::*;
+        if let Deposit | Withdrawal = self.transaction_type {
+            store.transactions.insert(self.transaction_id, self);
+        }
+
         self.update_client_account(store)?;
 
         Ok(())
     }
 
-    fn update_client_account(self, store: &mut Store) -> Result<(), AccountError> {
-        let client_account = ClientAccount::find_or_create_by_client_id(self.client_id, store);
+    fn update_client_account(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
+        use TransactionType::*;
+
+        let client_account = Account::find_or_create_by_client_id(self.client_id, store);
         let amount = self.amount;
         match self.transaction_type {
-            TransactionType::Deposit => {
+            Deposit => {
                 if let Some(amount) = amount {
-                    client_account.deposit(amount, store);
+                    client_account
+                        .deposit(amount, store)
+                        .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?;
                 }
                 client_account
             }
-            TransactionType::Withdrawal => {
+            Withdrawal => {
                 if let Some(amount) = amount {
-                    client_account.withdraw(amount, store)?;
+                    client_account
+                        .withdraw(amount, store)
+                        .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?;
                 }
                 client_account
             }
-            TransactionType::Dispute => client_account.dispute(self.transaction_id, store),
-            TransactionType::Resolve => client_account.resolve(self.transaction_id, store),
-            TransactionType::Chargeback => client_account.charge_back(self.transaction_id, store),
+            Dispute => client_account
+                .dispute(self.transaction_id, store)
+                .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?,
+            Resolve => client_account
+                .resolve(self.transaction_id, store)
+                .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?,
+            Chargeback => client_account
+                .charge_back(self.transaction_id, store)
+                .map_err(|_| TransactionError::InvalidTransaction(self.transaction_id))?,
         };
         Ok(())
     }
