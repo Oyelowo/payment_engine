@@ -1,5 +1,6 @@
 use super::account::{Account, AccountError, ClientId};
 use super::store::Store;
+use anyhow::Context;
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -47,6 +48,9 @@ pub(crate) enum TransactionType {
 pub enum TransactionError {
     #[error("Invalid transaction - {0}")]
     AccountError(#[from] AccountError),
+
+    #[error("Invalid input")]
+    InvalidInput(#[from] anyhow::Error),
 }
 
 pub type TransactionId = u32;
@@ -94,20 +98,11 @@ impl Transaction {
         use TransactionType::*;
 
         let existing_account = Account::find_or_create_by_client_id(self.client_id, store);
-        let amount = self.amount;
+        let amount = self.amount.with_context(|| "Unable to get amount");
+
         match self.transaction_type {
-            Deposit => {
-                if let Some(amount) = amount {
-                    existing_account.deposit(amount, store)?;
-                }
-                existing_account
-            }
-            Withdrawal => {
-                if let Some(amount) = amount {
-                    existing_account.withdraw(amount, store)?;
-                }
-                existing_account
-            }
+            Deposit => existing_account.deposit(amount?, store)?,
+            Withdrawal => existing_account.withdraw(amount?, store)?,
             Dispute => existing_account.dispute(self.transaction_id, store)?,
             Resolve => existing_account.resolve(self.transaction_id, store)?,
             Chargeback => existing_account.charge_back(self.transaction_id, store)?,
