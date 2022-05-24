@@ -182,6 +182,17 @@ withdrawal, 1, 5, 3.0",
 
 "cannot carry out a transaction after account is locked"
 )]
+    #[test_case(
+"type, client, tx, amount 
+deposit, 1, 1, 1.0
+deposit, 1, 2, -0.0001", 
+
+"client_id,available,held,total,locked
+1,1.0000,0.0000,1.0000,false
+";
+
+"does not accept negative amount"
+)]
     fn transactions_to_accounts(input_transaction: &str, output_account: &str) {
         let mut result = Vec::new();
 

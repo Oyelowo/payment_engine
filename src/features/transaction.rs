@@ -2,6 +2,7 @@ use super::account::{Account, AccountError, ClientId};
 use super::store::Store;
 use anyhow::Context;
 use rust_decimal::prelude::*;
+use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -49,8 +50,11 @@ pub enum TransactionError {
     #[error("Invalid transaction - {0}")]
     AccountError(#[from] AccountError),
 
+    #[error("Invalid input - {0}")]
+    InvalidAmount(Decimal),
+
     #[error("Invalid input")]
-    InvalidInput(#[from] anyhow::Error),
+    Unknown(#[from] anyhow::Error),
 }
 
 pub type TransactionId = u32;
@@ -85,6 +89,13 @@ impl Transaction {
 
     pub(crate) fn save(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
         use TransactionType::*;
+
+        if let Some(amount) = self.amount {
+            if amount < dec!(0) {
+                return Err(TransactionError::InvalidAmount(amount));
+            }
+        }
+
         if let Deposit | Withdrawal = self.transaction_type {
             store.transactions.insert(self.transaction_id, self);
         }
