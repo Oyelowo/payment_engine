@@ -1,5 +1,7 @@
-use super::account::{Account, AccountError, ClientId};
-use super::store::Store;
+use super::{
+    account::{Account, AccountError, ClientId},
+    store::{AccountStore, TransactionStore},
+};
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -74,44 +76,55 @@ pub struct Transaction {
 impl Transaction {
     pub fn find_by_id(
         transaction_id: TransactionId,
-        store: &mut Store,
+        store: &mut TransactionStore,
     ) -> Option<&mut Transaction> {
         store.transactions.get_mut(&transaction_id)
     }
 
-    pub(crate) fn save(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
+    pub(crate) fn save(
+        &mut self,
+        account_store: &mut AccountStore,
+        store: &mut TransactionStore,
+    ) -> anyhow::Result<(), TransactionError> {
         use TransactionType::*;
         if let Deposit | Withdrawal = self.transaction_type {
-            store.transactions.insert(self.transaction_id, self);
+            store.transactions.insert(self.transaction_id, *self);
         }
 
-        self.update_account(store)?;
+        self.update_account(account_store, store)?;
 
         Ok(())
     }
 
-    fn update_account(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
+    fn update_account(
+        &mut self,
+        account_store: &mut AccountStore,
+        tx_store: &mut TransactionStore,
+    ) -> anyhow::Result<(), TransactionError> {
         use TransactionType::*;
-
-        let account = Account::find_or_create_by_client_id(self.client_id, store);
+        let account = Account::find_or_create_by_client_id(self.client_id, account_store);
+        let transaction = Transaction::find_by_id(self.transaction_id, tx_store);
         let amount = self.amount;
-        match self.transaction_type {
-            Deposit => {
-                if let Some(amount) = amount {
-                    account.deposit(amount, store)?;
+
+        if let Some(transaction) = transaction {
+            match self.transaction_type {
+                Deposit => {
+                    if let Some(amount) = amount {
+                        account.deposit(amount, account_store)?;
+                    }
+                    account
                 }
-                account
-            }
-            Withdrawal => {
-                if let Some(amount) = amount {
-                    account.withdraw(amount, store)?;
+                Withdrawal => {
+                    if let Some(amount) = amount {
+                        account.withdraw(amount, account_store)?;
+                    }
+                    account
                 }
-                account
-            }
-            Dispute => account.dispute(self.transaction_id, store)?,
-            Resolve => account.resolve(self.transaction_id, store)?,
-            Chargeback => account.charge_back(self.transaction_id, store)?,
-        };
+                Dispute => account.dispute(transaction, account_store)?,
+                Resolve => account.resolve(transaction, account_store)?,
+                Chargeback => account.charge_back(*transaction, account_store)?,
+            };
+        }
         Ok(())
     }
 }

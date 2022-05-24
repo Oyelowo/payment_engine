@@ -1,4 +1,4 @@
-use super::store::Store;
+use super::store::AccountStore;
 use super::transaction::{Transaction, TransactionId};
 use anyhow::Context;
 use rust_decimal::prelude::*;
@@ -70,14 +70,14 @@ impl Account {
         }
     }
 
-    pub fn find_or_create_by_client_id(client_id: ClientId, store: &mut Store) -> Account {
+    pub fn find_or_create_by_client_id(client_id: ClientId, store: &mut AccountStore) -> Account {
         *store
             .accounts
             .entry(client_id)
             .or_insert_with(|| Account::new(client_id))
     }
 
-    pub(crate) fn update(self, store: &mut Store) -> AccountResult<Self> {
+    pub(crate) fn update(self, store: &mut AccountStore) -> AccountResult<Self> {
         let account = Self::find_or_create_by_client_id(self.client_id, store);
         if account.is_locked {
             return Err(AccountError::AccountLocked(self.client_id));
@@ -87,7 +87,7 @@ impl Account {
         Ok(self)
     }
 
-    pub(crate) fn deposit(self, amount: Decimal, store: &mut Store) -> AccountResult<Self> {
+    pub(crate) fn deposit(self, amount: Decimal, store: &mut AccountStore) -> AccountResult<Self> {
         Self {
             available_amount: self.available_amount + amount,
             total_amount: self.total_amount + amount,
@@ -96,7 +96,7 @@ impl Account {
         .update(store)
     }
 
-    pub(crate) fn withdraw(self, amount: Decimal, store: &mut Store) -> AccountResult<Self> {
+    pub(crate) fn withdraw(self, amount: Decimal, store: &mut AccountStore) -> AccountResult<Self> {
         if self.available_amount < amount {
             return Err(AccountError::InsufficientFund {
                 requested: amount,
@@ -114,68 +114,53 @@ impl Account {
 
     pub(crate) fn dispute(
         self,
-        transaction_id: TransactionId,
-        store: &mut Store,
+        tx: &mut Transaction,
+        store: &mut AccountStore,
     ) -> AccountResult<Self> {
-        let transaction = Transaction::find_by_id(transaction_id, store);
-        match transaction {
-            Some(tx) => {
-                let amount = tx.amount.context("Amount does not exist")?;
-                tx.is_under_dispute = true;
+        let amount = tx.amount.context("Amount does not exist")?;
+        tx.is_under_dispute = true;
 
-                Self {
-                    available_amount: self.available_amount - amount,
-                    held_amount: self.held_amount + amount,
-                    ..self
-                }
-                .update(store)
-            }
-            _ => Err(AccountError::Unknown),
+        Self {
+            available_amount: self.available_amount - amount,
+            held_amount: self.held_amount + amount,
+            ..self
         }
+        .update(store)
     }
 
-    pub(crate) fn resolve(
-        self,
-        transaction_id: TransactionId,
-        store: &mut Store,
-    ) -> AccountResult<Self> {
-        let transaction = Transaction::find_by_id(transaction_id, store);
-        match transaction {
-            Some(tx) if tx.is_under_dispute => {
-                let amount = tx.amount.context("Amount does not exist")?;
-                tx.is_under_dispute = false;
+    pub(crate) fn resolve(self, tx: &mut Transaction, store: &mut AccountStore) -> AccountResult<Self> {
+        if tx.is_under_dispute {
+            let amount = tx.amount.context("Amount does not exist")?;
+            tx.is_under_dispute = false;
 
-                Self {
-                    available_amount: self.available_amount + amount,
-                    held_amount: self.held_amount - amount,
-                    ..self
-                }
-                .update(store)
+            Self {
+                available_amount: self.available_amount + amount,
+                held_amount: self.held_amount - amount,
+                ..self
             }
-            _ => Err(AccountError::Unknown),
+            .update(store)
+        } else {
+            Err(AccountError::Unknown)
         }
     }
 
     // Should charge back be allowed to negative balance?
     pub(crate) fn charge_back(
         self,
-        transaction_id: TransactionId,
-        store: &mut Store,
+        tx: Transaction,
+        store: &mut AccountStore,
     ) -> AccountResult<Self> {
-        let transaction = Transaction::find_by_id(transaction_id, store);
-
-        match transaction {
-            Some(tx) if tx.is_under_dispute => {
-                let amount = tx.amount.context("Amount does not exist")?;
-                Self {
-                    is_locked: true,
-                    held_amount: self.held_amount - amount,
-                    total_amount: self.total_amount - amount,
-                    ..self
-                }
-                .update(store)
+        if tx.is_under_dispute {
+            let amount = tx.amount.context("Amount does not exist")?;
+            Self {
+                is_locked: true,
+                held_amount: self.held_amount - amount,
+                total_amount: self.total_amount - amount,
+                ..self
             }
-            _ => Err(AccountError::Unknown),
+            .update(store)
+        } else {
+            Err(AccountError::Unknown)
         }
     }
 }

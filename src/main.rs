@@ -9,7 +9,7 @@ extern crate log;
 
 mod features;
 use csv::Writer;
-use features::{Store, Transaction};
+use features::{AccountStore, Transaction, TransactionStore};
 
 fn main() {
     env_logger::init();
@@ -36,18 +36,19 @@ fn generate_accounts_from_transactions(
         .flexible(true)
         .from_reader(reader);
 
-    let mut store = Store::new();
+    let mut tx_store = TransactionStore::new();
+    let mut acc_store = AccountStore::new();
 
     for result in rdr.deserialize() {
-        let transaction: Transaction = result?;
-        if let Err(e) = transaction.save(&mut store) {
+        let mut transaction: Transaction = result?;
+        if let Err(e) = transaction.save(&mut acc_store, &mut tx_store) {
             warn!("{e}");
         }
     }
 
     let mut wtr = Writer::from_writer(writer);
 
-    for account in store.accounts.values() {
+    for account in acc_store.accounts.values() {
         wtr.serialize(account)?;
     }
     wtr.flush()?;

@@ -4,6 +4,6 @@ mod transaction;
 
 pub use self::{
     account::Account,
-    store::Store,
+    store::{AccountStore, TransactionStore},
     transaction::{Transaction, TransactionId},
 };
