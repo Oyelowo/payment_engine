@@ -70,7 +70,7 @@ impl Account {
         }
     }
 
-    pub fn find_or_create_by_client_id(client_id: ClientId, store: &mut Store) -> Account {
+    pub(crate) fn find_or_create_by_client_id(client_id: ClientId, store: &mut Store) -> Account {
         *store
             .accounts
             .entry(client_id)
@@ -117,11 +117,11 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
-        let transaction = Transaction::find_by_id(transaction_id, store);
-        match transaction {
+        let existing_transaction = Transaction::find_by_id(transaction_id, store);
+        match existing_transaction {
             Some(tx) => {
-                let amount = tx.amount.context("Amount does not exist")?;
-                tx.is_under_dispute = true;
+                let amount = tx.get_amount().context("Amount does not exist")?;
+                tx.set_is_under_dispute(true);
 
                 Self {
                     available_amount: self.available_amount - amount,
@@ -141,9 +141,9 @@ impl Account {
     ) -> AccountResult<Self> {
         let transaction = Transaction::find_by_id(transaction_id, store);
         match transaction {
-            Some(tx) if tx.is_under_dispute => {
-                let amount = tx.amount.context("Amount does not exist")?;
-                tx.is_under_dispute = false;
+            Some(tx) if tx.get_is_under_dispute() => {
+                let amount = tx.get_amount().context("Amount does not exist")?;
+                tx.set_is_under_dispute(false);
 
                 Self {
                     available_amount: self.available_amount + amount,
@@ -162,11 +162,11 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
-        let transaction = Transaction::find_by_id(transaction_id, store);
+        let existing_transaction = Transaction::find_by_id(transaction_id, store);
 
-        match transaction {
-            Some(tx) if tx.is_under_dispute => {
-                let amount = tx.amount.context("Amount does not exist")?;
+        match existing_transaction {
+            Some(tx) if tx.get_is_under_dispute() => {
+                let amount = tx.get_amount().context("Amount does not exist")?;
                 Self {
                     is_locked: true,
                     held_amount: self.held_amount - amount,

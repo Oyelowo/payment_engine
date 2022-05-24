@@ -54,21 +54,21 @@ pub type TransactionId = u32;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Transaction {
     #[serde(rename = "type")]
-    pub(crate) transaction_type: TransactionType,
+    transaction_type: TransactionType,
 
     /// Unique but not guaranteed to be ordered
     #[serde(rename = "client")]
-    pub(crate) client_id: ClientId,
+    client_id: ClientId,
 
     /// Globally Unique but not guaranteed to be ordered
     #[serde(rename = "tx")]
-    pub(crate) transaction_id: TransactionId,
+    transaction_id: TransactionId,
 
     /// Four decimal places
-    pub(crate) amount: Option<Decimal>,
+    amount: Option<Decimal>,
 
     #[serde(skip)]
-    pub(crate) is_under_dispute: bool,
+    is_under_dispute: bool,
 }
 
 impl Transaction {
@@ -93,25 +93,42 @@ impl Transaction {
     fn update_account(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
         use TransactionType::*;
 
-        let account = Account::find_or_create_by_client_id(self.client_id, store);
+        let existing_account = Account::find_or_create_by_client_id(self.client_id, store);
         let amount = self.amount;
         match self.transaction_type {
             Deposit => {
                 if let Some(amount) = amount {
-                    account.deposit(amount, store)?;
+                    existing_account.deposit(amount, store)?;
                 }
-                account
+                existing_account
             }
             Withdrawal => {
                 if let Some(amount) = amount {
-                    account.withdraw(amount, store)?;
+                    existing_account.withdraw(amount, store)?;
                 }
-                account
+                existing_account
             }
-            Dispute => account.dispute(self.transaction_id, store)?,
-            Resolve => account.resolve(self.transaction_id, store)?,
-            Chargeback => account.charge_back(self.transaction_id, store)?,
+            Dispute => existing_account.dispute(self.transaction_id, store)?,
+            Resolve => existing_account.resolve(self.transaction_id, store)?,
+            Chargeback => existing_account.charge_back(self.transaction_id, store)?,
         };
         Ok(())
+    }
+
+    /// Get the transaction's is under dispute.
+    #[must_use]
+    pub fn get_is_under_dispute(&self) -> bool {
+        self.is_under_dispute
+    }
+
+    /// Get the transaction's amount.
+    #[must_use]
+    pub fn get_amount(&self) -> Option<Decimal> {
+        self.amount
+    }
+
+    /// Set the transaction's is under dispute.
+    pub fn set_is_under_dispute(&mut self, is_under_dispute: bool) {
+        self.is_under_dispute = is_under_dispute;
     }
 }
