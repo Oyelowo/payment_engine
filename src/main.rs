@@ -84,7 +84,7 @@ withdrawal, 2, 5, 3.0",
 2,2.0000,0.0000,2.0000,false
 ";
 
-"when deposits and withdrawals only"
+"handles deposits and withdrawals properly"
 )]
     #[test_case(
 "type, client, tx, amount
@@ -99,7 +99,7 @@ withdrawal, 2, 5, 3.0014355",
 2,2.2345,0.0000,2.2345,false
 ";
 
-"can handle at least 4 decimal places"
+"handles at least 4 decimal places properly"
 )]
     #[test_case(
 "type, client, tx, amount 
@@ -114,7 +114,7 @@ withdrawal, 2, 5, 3.0",
 2,2.0000,0.0000,2.0000,false
 ";
 
-"when client 1 disputes"
+"handles client 1 dispute properly"
 )]
     #[test_case(
 "type, client, tx, amount 
@@ -129,7 +129,7 @@ withdrawal, 2, 5, 3.0",
 2,2.0000,0.0000,2.0000,false
 ";
 
-"successfully resolves disputed"
+"can successfully resolve dispute"
 )]
     #[test_case(
 "type, client, tx, amount 
@@ -163,7 +163,7 @@ chargeback, 2, 5,",
 2,-1.0000,0.0000,-1.0000,true
 ";
 
-"locks accounts 1 and 2 when clients 1 and 2 inittiate chargeback"
+"locks accounts 1 and 2 when clients 1 and 2 initiate chargebacks"
 )]
     #[test_case(
 "type, client, tx, amount 
