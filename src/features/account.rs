@@ -1,5 +1,5 @@
 use super::store::AccountStore;
-use super::transaction::{Transaction, TransactionId};
+use super::transaction::Transaction;
 use anyhow::Context;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
@@ -128,7 +128,11 @@ impl Account {
         .update(store)
     }
 
-    pub(crate) fn resolve(self, tx: &mut Transaction, store: &mut AccountStore) -> AccountResult<Self> {
+    pub(crate) fn resolve(
+        self,
+        tx: &mut Transaction,
+        store: &mut AccountStore,
+    ) -> AccountResult<Self> {
         if tx.is_under_dispute {
             let amount = tx.amount.context("Amount does not exist")?;
             tx.is_under_dispute = false;
