@@ -117,8 +117,8 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
-        let mut transaction = Transaction::find_by_id(transaction_id, store);
-        match transaction.as_mut() {
+        let transaction = Transaction::find_by_id(transaction_id, store);
+        match transaction {
             Some(tx) => {
                 let amount = tx.amount.context("Amount does not exist")?;
                 tx.is_under_dispute = true;
@@ -139,8 +139,8 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
-        let mut transaction = Transaction::find_by_id(transaction_id, store);
-        match transaction.as_mut() {
+        let transaction = Transaction::find_by_id(transaction_id, store);
+        match transaction {
             Some(tx) if tx.is_under_dispute => {
                 let amount = tx.amount.context("Amount does not exist")?;
                 tx.is_under_dispute = false;
@@ -162,9 +162,9 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
-        let mut transaction = Transaction::find_by_id(transaction_id, store);
+        let transaction = Transaction::find_by_id(transaction_id, store);
 
-        match transaction.as_mut() {
+        match transaction {
             Some(tx) if tx.is_under_dispute => {
                 let amount = tx.amount.context("Amount does not exist")?;
                 Self {
