@@ -1,9 +1,12 @@
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use std::{
     env,
     fs::File,
     io::{self, BufRead, BufReader, Write},
     process,
 };
+
 #[macro_use]
 extern crate log;
 
@@ -39,7 +42,12 @@ fn generate_accounts_from_transactions(
     let mut store = Store::new();
 
     for result in rdr.deserialize() {
-        let transaction: Transaction = result?;
+        let record: TransactionRecord = result?;
+        // This has the limitation that csv crate does not support tagged enum
+        // https://github.com/BurntSushi/rust-csv/issues/211
+        let transaction: Transaction =
+            serde_json::from_str(serde_json::to_string(&record)?.as_str()).expect("parsing failed");
+
         if let Err(e) = transaction.save(&mut store) {
             warn!("{e}");
         }
@@ -53,6 +61,22 @@ fn generate_accounts_from_transactions(
     wtr.flush()?;
 
     Ok(())
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TransactionRecord {
+    #[serde(rename = "type")]
+    rtype: String,
+
+    /// Unique but not guaranteed to be ordered
+    client: u16,
+
+    /// Globally Unique but not guaranteed to be ordered
+    #[serde(rename = "tx")]
+    tx: u32,
+
+    /// Four decimal places
+    amount: Option<Decimal>,
 }
 
 #[cfg(test)]
