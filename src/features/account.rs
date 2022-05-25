@@ -76,8 +76,8 @@ impl Account {
     }
 
     pub(crate) fn update(self, store: &mut Store) -> AccountResult<Self> {
-        let account = Self::find_or_create_by_client_id(self.client_id, store);
-        if account.is_locked {
+        let existing_account = Self::find_or_create_by_client_id(self.client_id, store);
+        if existing_account.is_locked {
             return Err(AccountError::AccountLocked(self.client_id));
         }
 
@@ -85,12 +85,13 @@ impl Account {
         Ok(self)
     }
 
-    pub(crate) fn deposit(self, amount: Decimal) -> Self {
+    pub(crate) fn deposit(self, amount: Decimal, store: &mut Store) -> AccountResult<Self> {
         Self {
             available_amount: self.available_amount + amount,
             total_amount: self.total_amount + amount,
             ..self
         }
+        .update(store)
     }
 
     pub(crate) fn withdraw(self, amount: Decimal, store: &mut Store) -> AccountResult<Self> {
@@ -109,29 +110,35 @@ impl Account {
         .update(store)
     }
 
-    pub(crate) fn dispute(self, amount: Decimal) -> Self {
+    pub(crate) fn dispute(self, amount: Decimal, store: &mut Store) -> AccountResult<Self> {
+        // let existing_account = Account::find_or_create_by_client_id(self.client_id, store);
         Self {
             available_amount: self.available_amount - amount,
             held_amount: self.held_amount + amount,
             ..self
         }
+        .update(store)
     }
 
-    pub(crate) fn resolve(self, amount: Decimal) -> Self {
+    pub(crate) fn resolve(self, amount: Decimal, store: &mut Store) -> AccountResult<Self> {
+        // let existing_account = Account::find_or_create_by_client_id(self.client_id, store);
+
         Self {
             available_amount: self.available_amount + amount,
             held_amount: self.held_amount - amount,
             ..self
         }
+        .update(store)
     }
 
     // Should charge back be allowed to negative balance?
-    pub(crate) fn charge_back(self, amount: Decimal) -> Self {
+    pub(crate) fn charge_back(self, amount: Decimal, store: &mut Store) -> AccountResult<Self> {
         Self {
             is_locked: true,
             held_amount: self.held_amount - amount,
             total_amount: self.total_amount - amount,
             ..self
         }
+        .update(store)
     }
 }

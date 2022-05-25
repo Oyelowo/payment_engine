@@ -14,6 +14,9 @@ pub enum TransactionError {
     #[error("Invalid input - {0}")]
     InvalidAmount(Decimal),
 
+    #[error("Not found")]
+    NotFound,
+
     #[error("Invalid input")]
     Unknown(#[from] anyhow::Error),
 }
@@ -102,7 +105,7 @@ impl Transaction {
     }
 
     pub(crate) fn save(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
-        if let Some(amount) = self.get_amount() {
+        if let Ok(amount) = self.get_amount() {
             if amount < dec!(0) {
                 return Err(TransactionError::InvalidAmount(amount));
             }
@@ -123,10 +126,10 @@ impl Transaction {
             Deposit {
                 details, amount, ..
             } => {
-                store.transactions.insert(details.transaction_id, self);
                 let existing_account =
                     Account::find_or_create_by_client_id(details.client_id, store);
-                existing_account.deposit(amount).update(store)?
+                store.transactions.insert(details.transaction_id, self);
+                existing_account.deposit(amount, store)?
             }
             Withdrawal {
                 details, amount, ..
@@ -144,7 +147,7 @@ impl Transaction {
                 disputed_tx.set_is_under_dispute(true);
                 let disputed_tx_amt = disputed_tx.get_amount().context("amount empty")?;
 
-                existing_account.dispute(disputed_tx_amt).update(store)?
+                existing_account.dispute(disputed_tx_amt, store)?
             }
             Resolve { details } => {
                 let existing_account =
@@ -153,20 +156,18 @@ impl Transaction {
                     Self::find_by_id(details.transaction_id, store).context("not found")?;
                 disputed_tx.set_is_under_dispute(false);
                 let disputed_tx_amt = disputed_tx.get_amount().context("amount empty")?;
-                existing_account.resolve(disputed_tx_amt).update(store)?
+                existing_account.resolve(disputed_tx_amt, store)?
             }
 
             Chargeback { details } => {
-                let existing_account =
-                    Account::find_or_create_by_client_id(details.client_id, store);
-
                 let disputed_tx =
                     Self::find_by_id(details.transaction_id, store).context("not found")?;
-                // disputed_tx.set_is_under_dispute(true);
+
                 let disputed_tx_amt = disputed_tx.get_amount().context("amount empty")?;
-                existing_account
-                    .charge_back(disputed_tx_amt)
-                    .update(store)?
+
+                let existing_account =
+                    Account::find_or_create_by_client_id(details.client_id, store);
+                existing_account.charge_back(disputed_tx_amt, store)?
             }
         };
         Ok(())
@@ -195,13 +196,13 @@ impl Transaction {
 
     /// Get the transaction's amount.
     #[must_use]
-    pub fn get_amount(&self) -> Option<Decimal> {
+    pub fn get_amount(&self) -> Result<Decimal, TransactionError> {
         use Transaction::*;
 
         match self {
-            Deposit { amount, .. } => Some(*amount),
-            Withdrawal { amount: amount, .. } => Some(*amount),
-            _ => None,
+            Deposit { amount, .. } => Ok(*amount),
+            Withdrawal { amount, .. } => Ok(*amount),
+            _ => Err(TransactionError::NotFound),
         }
     }
 
@@ -211,16 +212,16 @@ impl Transaction {
 
         match self {
             Deposit {
-                is_under_dispute: k,
+                is_under_dispute: disputed,
                 ..
             } => {
-                *k = is_under_dispute;
+                *disputed = is_under_dispute;
             }
             Withdrawal {
-                is_under_dispute: k,
+                is_under_dispute: disputed,
                 ..
             } => {
-                *k = is_under_dispute;
+                *disputed = is_under_dispute;
             }
             _ => {}
         }
