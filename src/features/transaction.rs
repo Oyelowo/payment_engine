@@ -46,18 +46,19 @@ pub(crate) enum TransactionType {
 }
 
 #[derive(Error, Debug)]
-pub enum TransactionError {
+pub(crate) enum TransactionError {
     #[error("Invalid transaction - {0}")]
     AccountError(#[from] AccountError),
 
     #[error("Invalid input - {0}")]
     InvalidAmount(Decimal),
 
-    #[error("Invalid input")]
+    #[error("Unknown")]
     Unknown(#[from] anyhow::Error),
 }
 
-pub type TransactionId = u32;
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
+pub struct TransactionId(u32);
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Transaction {
