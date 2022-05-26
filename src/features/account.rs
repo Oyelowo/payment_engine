@@ -4,10 +4,11 @@ use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize, Serializer};
 use thiserror::Error;
 
-pub(crate) type ClientId = u16;
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct ClientId(u16);
 
 #[derive(Error, Debug)]
-pub enum AccountError {
+pub(crate) enum AccountError {
     #[error(
         "You cannot withdraw {requested}. It is less than {available} available in your account"
     )]
@@ -20,9 +21,6 @@ pub enum AccountError {
 
     #[error("Invalid input")]
     InvalidInput(#[from] anyhow::Error),
-
-    #[error("Unknown")]
-    Unknown,
 }
 
 type AccountResult<T> = anyhow::Result<T, AccountError>;

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum TransactionError {
+pub(crate) enum TransactionError {
     #[error("Invalid transaction - {0}")]
     AccountError(#[from] AccountError),
 
@@ -21,7 +21,8 @@ pub enum TransactionError {
     Unknown(#[from] anyhow::Error),
 }
 
-pub type TransactionId = u32;
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TransactionId(u32);
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct TransactionDetails {
@@ -119,84 +120,54 @@ impl Transaction {
     fn update_account(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
         use Transaction::*;
 
-        // let existing_account = Account::find_or_create_by_client_id(self.client_id, store);
-        // let amount = self.amount.with_context(|| "Unable to get amount");
-
         match self {
             Deposit {
                 details, amount, ..
             } => {
-                let existing_account =
-                    Account::find_or_create_by_client_id(details.client_id, store);
                 store.transactions.insert(details.transaction_id, self);
-                existing_account.deposit(amount, store)?
+
+                Account::find_or_create_by_client_id(details.client_id, store)
+                    .deposit(amount, store)?
             }
             Withdrawal {
                 details, amount, ..
             } => {
                 store.transactions.insert(details.transaction_id, self);
-                let existing_account =
-                    Account::find_or_create_by_client_id(details.client_id, store);
-                existing_account.withdraw(amount, store)?
-            }
-            Dispute { details } => {
-                let existing_account =
-                    Account::find_or_create_by_client_id(details.client_id, store);
-                let disputed_tx =
-                    Self::find_by_id(details.transaction_id, store).context("not found")?;
-                disputed_tx.set_is_under_dispute(true);
-                let disputed_tx_amt = disputed_tx.get_amount().context("amount empty")?;
 
-                existing_account.dispute(disputed_tx_amt, store)?
+                Account::find_or_create_by_client_id(details.client_id, store)
+                    .withdraw(amount, store)?
             }
-            Resolve { details } => {
-                let existing_account =
-                    Account::find_or_create_by_client_id(details.client_id, store);
-                let disputed_tx =
-                    Self::find_by_id(details.transaction_id, store).context("not found")?;
-                disputed_tx.set_is_under_dispute(false);
-                let disputed_tx_amt = disputed_tx.get_amount().context("amount empty")?;
-                existing_account.resolve(disputed_tx_amt, store)?
-            }
+            Dispute { details } => Self::find_by_id(details.transaction_id, store)
+                .with_context(|| "Transaction not found")?
+                .set_is_under_dispute(true)
+                .get_amount()
+                .map(|amount| {
+                    Account::find_or_create_by_client_id(details.client_id, store)
+                        .dispute(amount, store)
+                })??,
 
-            Chargeback { details } => {
-                let disputed_tx =
-                    Self::find_by_id(details.transaction_id, store).context("not found")?;
+            Resolve { details } => Self::find_by_id(details.transaction_id, store)
+                .with_context(|| "Transaction not found")?
+                .set_is_under_dispute(false)
+                .get_amount()
+                .map(|amount| {
+                    Account::find_or_create_by_client_id(details.client_id, store)
+                        .resolve(amount, store)
+                })??,
 
-                let disputed_tx_amt = disputed_tx.get_amount().context("amount empty")?;
-
-                let existing_account =
-                    Account::find_or_create_by_client_id(details.client_id, store);
-                existing_account.charge_back(disputed_tx_amt, store)?
-            }
+            Chargeback { details } => Self::find_by_id(details.transaction_id, store)
+                .with_context(|| "Transaction not found")?
+                .get_amount()
+                .map(|amount| {
+                    Account::find_or_create_by_client_id(details.client_id, store)
+                        .charge_back(amount, store)
+                })??,
         };
         Ok(())
     }
 
-    /// Get the transaction's is under dispute.
-    #[must_use]
-    pub fn get_is_under_dispute(&self) -> bool {
-        use Transaction::*;
-
-        match self {
-            Deposit {
-                is_under_dispute, ..
-            } => *is_under_dispute,
-            Withdrawal {
-                is_under_dispute, ..
-            } => *is_under_dispute,
-            _ => false,
-        }
-
-        // if let Chargeback {details} | Deposit { details, amount } = self  {
-        //     details.is_under_dispute
-        // }
-        // self.is_under_dispute
-    }
-
     /// Get the transaction's amount.
-    #[must_use]
-    pub fn get_amount(&self) -> Result<Decimal, TransactionError> {
+    pub(crate) fn get_amount(&self) -> Result<Decimal, TransactionError> {
         use Transaction::*;
 
         match self {
@@ -207,7 +178,7 @@ impl Transaction {
     }
 
     /// Set the transaction's is under dispute.
-    pub fn set_is_under_dispute(&mut self, is_under_dispute: bool) {
+    pub(crate) fn set_is_under_dispute(&mut self, is_under_dispute: bool) -> &mut Self {
         use Transaction::*;
 
         match self {
@@ -225,5 +196,6 @@ impl Transaction {
             }
             _ => {}
         }
+        self
     }
 }
