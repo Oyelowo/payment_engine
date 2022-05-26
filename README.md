@@ -29,3 +29,5 @@ cargo doc --open
 │   └── transaction.rs
 └── main.rs
 ```
+
+Bonus: another approach in branch - `using_tagged_enum_approach`
