@@ -57,6 +57,8 @@ pub(crate) enum TransactionError {
     Unknown(#[from] anyhow::Error),
 }
 
+type TransactionResult<T> = anyhow::Result<T, TransactionError>;
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct TransactionId(u32);
 
@@ -88,7 +90,7 @@ impl Transaction {
         store.transactions.get_mut(&transaction_id)
     }
 
-    pub(crate) fn save(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
+    pub(crate) fn save(self, store: &mut Store) -> TransactionResult<()> {
         use TransactionType::*;
 
         if let Some(amount) = self.amount {
@@ -106,7 +108,7 @@ impl Transaction {
         Ok(())
     }
 
-    fn update_account(self, store: &mut Store) -> anyhow::Result<(), TransactionError> {
+    fn update_account(self, store: &mut Store) -> TransactionResult<()> {
         use TransactionType::*;
 
         let existing_account = Account::find_or_create_by_client_id(self.client_id, store);
@@ -123,13 +125,11 @@ impl Transaction {
     }
 
     /// Get the transaction's is under dispute.
-    #[must_use]
     pub fn get_is_under_dispute(&self) -> bool {
         self.is_under_dispute
     }
 
     /// Get the transaction's amount.
-    #[must_use]
     pub fn get_amount(&self) -> Option<Decimal> {
         self.amount
     }
