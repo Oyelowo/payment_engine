@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
-pub(crate) struct Client(u16);
+pub struct Client(u16);
 
 #[derive(Error, Debug)]
 pub(crate) enum AccountError {
@@ -24,8 +24,14 @@ pub(crate) enum AccountError {
     #[error("Invalid input")]
     InvalidInput(#[from] anyhow::Error),
 
-    #[error("Unknown")]
-    Unknown,
+    #[error("Erroneous dispute: Transaction id (0)")]
+    ErroneousDispute(TransactionId),
+
+    #[error("Erroneous resolve: Transaction id (0)")]
+    ErroneousResolve(TransactionId),
+
+    #[error("Erroneous charge back: Transaction id (0)")]
+    ErroneousChargeback(TransactionId),
 }
 
 type AccountResult<T> = anyhow::Result<T, AccountError>;
@@ -131,7 +137,7 @@ impl Account {
                 }
                 .update(store)
             }
-            _ => Err(AccountError::Unknown),
+            _ => Err(AccountError::ErroneousDispute(transaction_id)),
         }
     }
 
@@ -153,7 +159,7 @@ impl Account {
                 }
                 .update(store)
             }
-            _ => Err(AccountError::Unknown),
+            _ => Err(AccountError::ErroneousResolve(transaction_id)),
         }
     }
 
@@ -176,7 +182,7 @@ impl Account {
                 }
                 .update(store)
             }
-            _ => Err(AccountError::Unknown),
+            _ => Err(AccountError::ErroneousChargeback(transaction_id)),
         }
     }
 }
