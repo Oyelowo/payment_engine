@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 
 use super::{
-    account::{Account, ClientId},
+    account::{Account, Client},
     transaction::{Transaction, TransactionId},
 };
 
 /// This keeps track of users' account aggregation, deposits and withdrawals
 #[derive(Debug)]
 pub struct Store {
-    pub(crate) accounts: BTreeMap<ClientId, Account>,
+    pub(crate) accounts: BTreeMap<Client, Account>,
     pub transactions: BTreeMap<TransactionId, Transaction>,
 }
 

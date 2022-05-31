@@ -65,7 +65,7 @@ mod tests {
 deposit, 1, 1, 1.0 
 withdrawal, 1, 4, 1.5",
 
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,1.0000,0.0000,1.0000,false
 ";
 
@@ -79,7 +79,7 @@ deposit, 1, 3, 2.0
 withdrawal, 1, 4, 1.5 
 withdrawal, 2, 5, 3.0",
 
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,1.5000,0.0000,1.5000,false
 2,2.0000,0.0000,2.0000,false
 ";
@@ -94,7 +94,7 @@ deposit, 1, 3, 2.34354
 withdrawal, 1, 4, 1.522454 
 withdrawal, 2, 5, 3.0014355",
 
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,2.3889,0.0000,2.3889,false
 2,2.2345,0.0000,2.2345,false
 ";
@@ -109,7 +109,7 @@ dispute, 1, 1,
 deposit, 1, 1, 1.5 
 withdrawal, 2, 5, 3.0", 
 
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,1.5000,1.0000,2.5000,false
 2,2.0000,0.0000,2.0000,false
 ";
@@ -124,7 +124,7 @@ dispute, 1, 1, 2.0
 resolve, 1, 1,
 withdrawal, 2, 5, 3.0", 
 
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,1.0000,0.0000,1.0000,false
 2,2.0000,0.0000,2.0000,false
 ";
@@ -139,7 +139,7 @@ dispute, 1, 1,
 chargeback, 1, 1,
 withdrawal, 2, 5, 3.0", 
 
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,0.0000,0.0000,0.0000,true
 2,2.0000,0.0000,2.0000,false
 ";
@@ -158,7 +158,7 @@ chargeback, 2, 5,",
 
 // I'm assuming there can be a negative balance in case of chargeback.
 // Should this be prevented instead?
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,0.0000,0.0000,0.0000,true
 2,-1.0000,0.0000,-1.0000,true
 ";
@@ -175,7 +175,7 @@ deposit, 1, 2, 5.6587878
 deposit, 1, 3, 11.05
 withdrawal, 1, 5, 3.0", 
 
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,0.0000,0.0000,0.0000,true
 2,2.0000,0.0000,2.0000,false
 ";
@@ -187,7 +187,7 @@ withdrawal, 1, 5, 3.0",
 deposit, 1, 1, 1.0
 deposit, 1, 2, -0.0001", 
 
-"client_id,available,held,total,locked
+"client,available,held,total,locked
 1,1.0000,0.0000,1.0000,false
 ";
 

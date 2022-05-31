@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
-pub(crate) struct ClientId(u16);
+pub(crate) struct Client(u16);
 
 #[derive(Error, Debug)]
 pub(crate) enum AccountError {
@@ -19,7 +19,7 @@ pub(crate) enum AccountError {
         available: Decimal,
     },
     #[error("Action forbidden, account- (0) is locked")]
-    AccountLocked(ClientId),
+    AccountLocked(Client),
 
     #[error("Invalid input")]
     InvalidInput(#[from] anyhow::Error),
@@ -33,7 +33,7 @@ type AccountResult<T> = anyhow::Result<T, AccountError>;
 /// Client Account
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Account {
-    client_id: ClientId,
+    client: Client,
     /// The total funds that are available for trading, staking, withdrawal, etc.
     /// This should be equal to the total - held amounts
     #[serde(rename = "available", serialize_with = "round_serialize")]
@@ -61,9 +61,9 @@ where
 }
 
 impl Account {
-    pub(crate) fn new(client_id: ClientId) -> Self {
+    pub(crate) fn new(client: Client) -> Self {
         Self {
-            client_id,
+            client,
             available_amount: dec!(0),
             held_amount: dec!(0),
             total_amount: dec!(0),
@@ -71,20 +71,20 @@ impl Account {
         }
     }
 
-    pub(crate) fn find_or_create_by_client_id(client_id: ClientId, store: &mut Store) -> Account {
+    pub(crate) fn find_or_create_by_client(client: Client, store: &mut Store) -> Account {
         *store
             .accounts
-            .entry(client_id)
-            .or_insert_with(|| Account::new(client_id))
+            .entry(client)
+            .or_insert_with(|| Account::new(client))
     }
 
     pub(crate) fn update(self, store: &mut Store) -> AccountResult<Self> {
-        let account = Self::find_or_create_by_client_id(self.client_id, store);
+        let account = Self::find_or_create_by_client(self.client, store);
         if account.is_locked {
-            return Err(AccountError::AccountLocked(self.client_id));
+            return Err(AccountError::AccountLocked(self.client));
         }
 
-        store.accounts.insert(self.client_id, self);
+        store.accounts.insert(self.client, self);
         Ok(self)
     }
 

@@ -1,4 +1,4 @@
-use super::account::{Account, AccountError, ClientId};
+use super::account::{Account, AccountError, Client};
 use super::store::Store;
 use anyhow::Context;
 use rust_decimal::prelude::*;
@@ -69,7 +69,7 @@ pub struct Transaction {
 
     /// Unique but not guaranteed to be ordered
     #[serde(rename = "client")]
-    client_id: ClientId,
+    client: Client,
 
     /// Globally Unique but not guaranteed to be ordered
     #[serde(rename = "tx")]
@@ -111,7 +111,7 @@ impl Transaction {
     fn update_account(self, store: &mut Store) -> TransactionResult<()> {
         use TransactionType::*;
 
-        let existing_account = Account::find_or_create_by_client_id(self.client_id, store);
+        let existing_account = Account::find_or_create_by_client(self.client, store);
         let amount = self.amount.with_context(|| "Unable to get amount");
 
         match self.transaction_type {
