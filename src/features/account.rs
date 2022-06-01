@@ -63,7 +63,8 @@ where
     S: Serializer,
 {
     // Serialize to 4 decimal
-    s.serialize_str(format!("{amount:.4}").as_str())
+    let rounded_amount = amount.round_dp(4).to_string();
+    s.serialize_str(rounded_amount.as_str())
 }
 
 impl Account {

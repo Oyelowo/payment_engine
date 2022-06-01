@@ -66,7 +66,7 @@ deposit, 1, 1, 1.0
 withdrawal, 1, 4, 1.5",
 
 "client,available,held,total,locked
-1,1.0000,0.0000,1.0000,false
+1,1,0.0000,1,false
 ";
 
 "cannot withdraw more than available"
@@ -80,8 +80,8 @@ withdrawal, 1, 4, 1.5
 withdrawal, 2, 5, 3.0",
 
 "client,available,held,total,locked
-1,1.5000,0.0000,1.5000,false
-2,2.0000,0.0000,2.0000,false
+1,1.5,0.0000,1.5,false
+2,2,0.0000,2,false
 ";
 
 "handles deposits and withdrawals properly"
@@ -95,8 +95,8 @@ withdrawal, 1, 4, 1.522454
 withdrawal, 2, 5, 3.0014355",
 
 "client,available,held,total,locked
-1,2.3889,0.0000,2.3889,false
-2,2.2345,0.0000,2.2345,false
+1,2.3890,0.0000,2.3890,false
+2,2.2346,0.0000,2.2346,false
 ";
 
 "handles at least 4 decimal places properly"
@@ -110,8 +110,8 @@ deposit, 1, 1, 1.5
 withdrawal, 2, 5, 3.0", 
 
 "client,available,held,total,locked
-1,1.5000,1.0000,2.5000,false
-2,2.0000,0.0000,2.0000,false
+1,1.5,1,2.5,false
+2,2,0.0000,2,false
 ";
 
 "handles client 1 dispute properly"
@@ -125,8 +125,8 @@ resolve, 1, 1,
 withdrawal, 2, 5, 3.0", 
 
 "client,available,held,total,locked
-1,1.0000,0.0000,1.0000,false
-2,2.0000,0.0000,2.0000,false
+1,1,0.0000,1,false
+2,2,0.0000,2,false
 ";
 
 "can successfully resolve dispute"
@@ -141,7 +141,7 @@ withdrawal, 2, 5, 3.0",
 
 "client,available,held,total,locked
 1,0.0000,0.0000,0.0000,true
-2,2.0000,0.0000,2.0000,false
+2,2,0.0000,2,false
 ";
 
 "locks account 1 when client 1 charges back"
@@ -160,7 +160,7 @@ chargeback, 2, 5,",
 // Should this be prevented instead?
 "client,available,held,total,locked
 1,0.0000,0.0000,0.0000,true
-2,-1.0000,0.0000,-1.0000,true
+2,-1,0.0000,-1,true
 ";
 
 "locks accounts 1 and 2 when clients 1 and 2 initiate chargebacks"
@@ -177,7 +177,7 @@ withdrawal, 1, 5, 3.0",
 
 "client,available,held,total,locked
 1,0.0000,0.0000,0.0000,true
-2,2.0000,0.0000,2.0000,false
+2,2,0.0000,2,false
 ";
 
 "cannot carry out a transaction after account is locked"
@@ -188,7 +188,7 @@ deposit, 1, 1, 1.0
 deposit, 1, 2, -0.0001", 
 
 "client,available,held,total,locked
-1,1.0000,0.0000,1.0000,false
+1,1,0.0000,1,false
 ";
 
 "does not accept negative amount"
