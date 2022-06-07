@@ -62,6 +62,18 @@ type TransactionResult<T> = anyhow::Result<T, TransactionError>;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct TransactionId(u32);
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum DisputeState {
+    Disputed,
+    NotDisputed,
+}
+
+impl Default for DisputeState {
+    fn default() -> Self {
+        Self::NotDisputed
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Transaction {
     #[serde(rename = "type")]
@@ -79,7 +91,7 @@ pub struct Transaction {
     amount: Option<Decimal>,
 
     #[serde(skip)]
-    is_under_dispute: bool,
+    dispute_state: DisputeState,
 }
 
 impl Transaction {
@@ -125,8 +137,8 @@ impl Transaction {
     }
 
     /// Get the transaction's is under dispute.
-    pub fn get_is_under_dispute(&self) -> bool {
-        self.is_under_dispute
+    pub fn dispute_state(&self) -> DisputeState {
+        self.dispute_state
     }
 
     /// Get the transaction's amount.
@@ -135,7 +147,7 @@ impl Transaction {
     }
 
     /// Set the transaction's is under dispute.
-    pub fn set_is_under_dispute(&mut self, is_under_dispute: bool) {
-        self.is_under_dispute = is_under_dispute;
+    pub fn set_dispute_state(&mut self, dispute_state: DisputeState) {
+        self.dispute_state = dispute_state;
     }
 }

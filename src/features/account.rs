@@ -1,5 +1,5 @@
 use super::store::Store;
-use super::transaction::{Transaction, TransactionId};
+use super::transaction::{DisputeState, Transaction, TransactionId};
 use anyhow::Context;
 use rust_decimal::prelude::*;
 use rust_decimal_macros::dec;
@@ -125,11 +125,12 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
+        use DisputeState::*;
         let existing_transaction = Transaction::find_by_id(transaction_id, store);
         match existing_transaction {
             Some(tx) => {
                 let amount = tx.get_amount().with_context(|| "Amount does not exist")?;
-                tx.set_is_under_dispute(true);
+                tx.set_dispute_state(Disputed);
 
                 Self {
                     available_amount: self.available_amount - amount,
@@ -147,11 +148,12 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
+        use DisputeState::*;
         let transaction = Transaction::find_by_id(transaction_id, store);
         match transaction {
-            Some(tx) if tx.get_is_under_dispute() => {
+            Some(tx) if matches!(tx.dispute_state(), Disputed) => {
                 let amount = tx.get_amount().with_context(|| "Amount does not exist")?;
-                tx.set_is_under_dispute(false);
+                tx.set_dispute_state(NotDisputed);
 
                 Self {
                     available_amount: self.available_amount + amount,
@@ -170,10 +172,11 @@ impl Account {
         transaction_id: TransactionId,
         store: &mut Store,
     ) -> AccountResult<Self> {
+        use DisputeState::*;
         let existing_transaction = Transaction::find_by_id(transaction_id, store);
 
         match existing_transaction {
-            Some(tx) if tx.get_is_under_dispute() => {
+            Some(tx) if matches!(tx.dispute_state(), Disputed) => {
                 let amount = tx.get_amount().with_context(|| "Amount does not exist")?;
                 Self {
                     is_locked: true,
