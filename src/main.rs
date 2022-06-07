@@ -36,7 +36,7 @@ fn generate_accounts_from_transactions(
         .flexible(true)
         .from_reader(reader);
 
-    let mut store = Store::new();
+    let mut store = Store::default();
 
     for result in rdr.deserialize() {
         let transaction: Transaction = result?;
